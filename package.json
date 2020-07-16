@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "parcel public/index.html"
+    "dev": "parcel public/index.html db.js",
+    "build": "parcel public/index.html db.js",
+    "bundler": "@parcel/bundler-default"
   },
   "repository": {
     "type": "git",
@@ -23,7 +25,8 @@
     "express": "^4.17.1",
     "mongoose": "^5.5.15",
     "morgan": "^1.9.1",
-    "nodemon": "^2.0.4"
+    "nodemon": "^2.0.4",
+    "parcel-bundler": "^1.12.4"
   },
   "devDependencies": {
     "parcel-bundler": "^1.12.4"

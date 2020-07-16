@@ -117,79 +117,137 @@ parcelRequire = (function (modules, cache, entry, globalName) {
   }
 
   return newRequire;
-})({"../node_modules/parcel-bundler/src/builtins/bundle-url.js":[function(require,module,exports) {
-var bundleURL = null;
+})({"index.js":[function(require,module,exports) {
+var transactions = [];
+var myChart;
+fetch("/api/transaction").then(function (response) {
+  return response.json();
+}).then(function (data) {
+  // save db data on global variable
+  transactions = data;
+  populateTotal();
+  populateTable();
+  populateChart();
+});
 
-function getBundleURLCached() {
-  if (!bundleURL) {
-    bundleURL = getBundleURL();
-  }
-
-  return bundleURL;
+function populateTotal() {
+  // reduce transaction amounts to a single total value
+  var total = transactions.reduce(function (total, t) {
+    return total + parseInt(t.value);
+  }, 0);
+  var totalEl = document.querySelector("#total");
+  totalEl.textContent = total;
 }
 
-function getBundleURL() {
-  // Attempt to find the URL of the current script and use that as the base URL
-  try {
-    throw new Error();
-  } catch (err) {
-    var matches = ('' + err.stack).match(/(https?|file|ftp|chrome-extension|moz-extension):\/\/[^)\n]+/g);
+function populateTable() {
+  var tbody = document.querySelector("#tbody");
+  tbody.innerHTML = "";
+  transactions.forEach(function (transaction) {
+    // create and populate a table row
+    var tr = document.createElement("tr");
+    tr.innerHTML = "\n      <td>".concat(transaction.name, "</td>\n      <td>").concat(transaction.value, "</td>\n    ");
+    tbody.appendChild(tr);
+  });
+}
 
-    if (matches) {
-      return getBaseURL(matches[0]);
+function populateChart() {
+  // copy array and reverse it
+  var reversed = transactions.slice().reverse();
+  var sum = 0; // create date labels for chart
+
+  var labels = reversed.map(function (t) {
+    var date = new Date(t.date);
+    return "".concat(date.getMonth() + 1, "/").concat(date.getDate(), "/").concat(date.getFullYear());
+  }); // create incremental values for chart
+
+  var data = reversed.map(function (t) {
+    sum += parseInt(t.value);
+    return sum;
+  }); // remove old chart if it exists
+
+  if (myChart) {
+    myChart.destroy();
+  }
+
+  var ctx = document.getElementById("myChart").getContext("2d");
+  myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Total Over Time",
+        fill: true,
+        backgroundColor: "#6666ff",
+        data: data
+      }]
     }
-  }
-
-  return '/';
+  });
 }
 
-function getBaseURL(url) {
-  return ('' + url).replace(/^((?:https?|file|ftp|chrome-extension|moz-extension):\/\/.+)\/[^/]+$/, '$1') + '/';
-}
+function sendTransaction(isAdding) {
+  var nameEl = document.querySelector("#t-name");
+  var amountEl = document.querySelector("#t-amount");
+  var errorEl = document.querySelector(".form .error"); // validate form
 
-exports.getBundleURL = getBundleURLCached;
-exports.getBaseURL = getBaseURL;
-},{}],"../node_modules/parcel-bundler/src/builtins/css-loader.js":[function(require,module,exports) {
-var bundle = require('./bundle-url');
-
-function updateLink(link) {
-  var newLink = link.cloneNode();
-
-  newLink.onload = function () {
-    link.remove();
-  };
-
-  newLink.href = link.href.split('?')[0] + '?' + Date.now();
-  link.parentNode.insertBefore(newLink, link.nextSibling);
-}
-
-var cssTimeout = null;
-
-function reloadCSS() {
-  if (cssTimeout) {
+  if (nameEl.value === "" || amountEl.value === "") {
+    errorEl.textContent = "Missing Information";
     return;
-  }
+  } else {
+    errorEl.textContent = "";
+  } // create record
 
-  cssTimeout = setTimeout(function () {
-    var links = document.querySelectorAll('link[rel="stylesheet"]');
 
-    for (var i = 0; i < links.length; i++) {
-      if (bundle.getBaseURL(links[i].href) === bundle.getBundleURL()) {
-        updateLink(links[i]);
-      }
+  var transaction = {
+    name: nameEl.value,
+    value: amountEl.value,
+    date: new Date().toISOString()
+  }; // if subtracting funds, convert amount to negative number
+
+  if (!isAdding) {
+    transaction.value *= -1;
+  } // add to beginning of current array of data
+
+
+  transactions.unshift(transaction); // re-run logic to populate ui with new record
+
+  populateChart();
+  populateTable();
+  populateTotal(); // also send to server
+
+  fetch("/api/transaction", {
+    method: "POST",
+    body: JSON.stringify(transaction),
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json"
     }
+  }).then(function (response) {
+    return response.json();
+  }).then(function (data) {
+    if (data.errors) {
+      errorEl.textContent = "Missing Information";
+    } else {
+      // clear form
+      nameEl.value = "";
+      amountEl.value = "";
+    }
+  }).catch(function (err) {
+    // fetch failed, so save in indexed db
+    saveRecord(transaction); // clear form
 
-    cssTimeout = null;
-  }, 50);
+    nameEl.value = "";
+    amountEl.value = "";
+  });
 }
 
-module.exports = reloadCSS;
-},{"./bundle-url":"../node_modules/parcel-bundler/src/builtins/bundle-url.js"}],"styles.css":[function(require,module,exports) {
-var reloadCSS = require('_css_loader');
+document.querySelector("#add-btn").onclick = function () {
+  sendTransaction(true);
+};
 
-module.hot.dispose(reloadCSS);
-module.hot.accept(reloadCSS);
-},{"_css_loader":"../node_modules/parcel-bundler/src/builtins/css-loader.js"}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+document.querySelector("#sub-btn").onclick = function () {
+  sendTransaction(false);
+};
+},{}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -217,7 +275,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52337" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "51355" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
@@ -393,5 +451,5 @@ function hmrAcceptRun(bundle, id) {
     return true;
   }
 }
-},{}]},{},["../node_modules/parcel-bundler/src/builtins/hmr-runtime.js"], null)
-//# sourceMappingURL=/styles.8986bff4.js.map
+},{}]},{},["../node_modules/parcel-bundler/src/builtins/hmr-runtime.js","index.js"], null)
+//# sourceMappingURL=/index.js.map
