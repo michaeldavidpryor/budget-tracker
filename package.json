@@ -5,10 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "parcel public/index.html",
-    "dev": "parcel public/index.html",
-    "build": "parcel public/index.html",
-    "bundler": "@parcel/bundler-default"
+    "start": "parcel public/index.html"
   },
   "repository": {
     "type": "git",
