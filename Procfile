@@ -1,2 +1,2 @@
 web
-npm run start
+"start":npm run start
