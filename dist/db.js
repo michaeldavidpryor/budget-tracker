@@ -117,136 +117,61 @@ parcelRequire = (function (modules, cache, entry, globalName) {
   }
 
   return newRequire;
-})({"index.js":[function(require,module,exports) {
-var transactions = [];
-var myChart;
-fetch("/api/transaction").then(function (response) {
-  return response.json();
-}).then(function (data) {
-  // save db data on global variable
-  transactions = data;
-  populateTotal();
-  populateTable();
-  populateChart();
-});
+})({"db.js":[function(require,module,exports) {
+var db;
+var request = indexedDB.open("budget", 1);
 
-function populateTotal() {
-  // reduce transaction amounts to a single total value
-  var total = transactions.reduce(function (total, t) {
-    return total + parseInt(t.value);
-  }, 0);
-  var totalEl = document.querySelector("#total");
-  totalEl.textContent = total;
-}
-
-function populateTable() {
-  var tbody = document.querySelector("#tbody");
-  tbody.innerHTML = "";
-  transactions.forEach(function (transaction) {
-    // create and populate a table row
-    var tr = document.createElement("tr");
-    tr.innerHTML = "\n      <td>".concat(transaction.name, "</td>\n      <td>").concat(transaction.value, "</td>\n    ");
-    tbody.appendChild(tr);
+request.onupgradeneeded = function (event) {
+  var db = event.target.result;
+  db.createObjectStore("pending", {
+    autoIncrement: true
   });
-}
+};
 
-function populateChart() {
-  // copy array and reverse it
-  var reversed = transactions.slice().reverse();
-  var sum = 0; // create date labels for chart
+request.onsuccess = function (event) {
+  db = event.target.result;
 
-  var labels = reversed.map(function (t) {
-    var date = new Date(t.date);
-    return "".concat(date.getMonth() + 1, "/").concat(date.getDate(), "/").concat(date.getFullYear());
-  }); // create incremental values for chart
-
-  var data = reversed.map(function (t) {
-    sum += parseInt(t.value);
-    return sum;
-  }); // remove old chart if it exists
-
-  if (myChart) {
-    myChart.destroy();
+  if (navigator.onLine) {
+    checkDatabase();
   }
-
-  var ctx = document.getElementById("myChart").getContext("2d");
-  myChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: "Total Over Time",
-        fill: true,
-        backgroundColor: "#6666ff",
-        data: data
-      }]
-    }
-  });
-}
-
-function sendTransaction(isAdding) {
-  var nameEl = document.querySelector("#t-name");
-  var amountEl = document.querySelector("#t-amount");
-  var errorEl = document.querySelector(".form .error"); // validate form
-
-  if (nameEl.value === "" || amountEl.value === "") {
-    errorEl.textContent = "Missing Information";
-    return;
-  } else {
-    errorEl.textContent = "";
-  } // create record
-
-
-  var transaction = {
-    name: nameEl.value,
-    value: amountEl.value,
-    date: new Date().toISOString()
-  }; // if subtracting funds, convert amount to negative number
-
-  if (!isAdding) {
-    transaction.value *= -1;
-  } // add to beginning of current array of data
-
-
-  transactions.unshift(transaction); // re-run logic to populate ui with new record
-
-  populateChart();
-  populateTable();
-  populateTotal(); // also send to server
-
-  fetch("/api/transaction", {
-    method: "POST",
-    body: JSON.stringify(transaction),
-    headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json"
-    }
-  }).then(function (response) {
-    return response.json();
-  }).then(function (data) {
-    if (data.errors) {
-      errorEl.textContent = "Missing Information";
-    } else {
-      // clear form
-      nameEl.value = "";
-      amountEl.value = "";
-    }
-  }).catch(function (err) {
-    // fetch failed, so save in indexed db
-    saveRecord(transaction); // clear form
-
-    nameEl.value = "";
-    amountEl.value = "";
-  });
-}
-
-document.querySelector("#add-btn").onclick = function () {
-  sendTransaction(true);
 };
 
-document.querySelector("#sub-btn").onclick = function () {
-  sendTransaction(false);
+request.onerror = function (event) {
+  console.log("Woops! " + event.target.errorCode);
 };
+
+function saveRecord(record) {
+  var transaction = db.transaction(["pending"], "readwrite");
+  var store = transaction.objectStore("pending");
+  store.add(record);
+}
+
+function checkDatabase() {
+  var transaction = db.transaction(["pending"], "readwrite");
+  var store = transaction.objectStore("pending");
+  var getAll = store.getAll();
+
+  getAll.onsuccess = function () {
+    if (getAll.result.length > 0) {
+      fetch("/api/transaction/bulk", {
+        method: "POST",
+        body: JSON.stringify(getAll.result),
+        headers: {
+          Accept: "application/json, text/plain, */*",
+          "Content-Type": "application/json"
+        }
+      }).then(function (response) {
+        return response.json();
+      }).then(function () {
+        var transaction = db.transaction(["pending"], "readwrite");
+        var store = transaction.objectStore("pending");
+        store.clear();
+      });
+    }
+  };
+}
+
+window.addEventListener("online", checkDatabase);
 },{}],"../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
@@ -275,7 +200,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "55167" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "54975" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
@@ -451,5 +376,5 @@ function hmrAcceptRun(bundle, id) {
     return true;
   }
 }
-},{}]},{},["../node_modules/parcel-bundler/src/builtins/hmr-runtime.js","index.js"], null)
-//# sourceMappingURL=/public.e31bb0bc.js.map
+},{}]},{},["../node_modules/parcel-bundler/src/builtins/hmr-runtime.js","db.js"], null)
+//# sourceMappingURL=/db.js.map
