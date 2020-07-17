@@ -1,2 +1,4 @@
-node_modules
-.cache
+/node_modules
+npm-debug.log
+.DS_Store
+/*.envnode_modules

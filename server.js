@@ -3,7 +3,7 @@ const logger = require("morgan");
 const mongoose = require("mongoose");
 const ParcelBundler = require("parcel-bundler");
 
-const PORT = 3000;
+const PORT = 1234;
 
 const app = express();
 
