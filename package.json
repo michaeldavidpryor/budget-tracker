@@ -24,8 +24,5 @@
     "mongoose": "^5.5.15",
     "morgan": "^1.9.1",
     "nodemon": "^2.0.4"
-  },
-  "devDependencies": {
-    "parcel-bundler": "^1.12.4"
   }
 }
